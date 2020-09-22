@@ -1,0 +1,1 @@
+[LexToken(WHILE,'while',1,0), LexToken(IF,'if',1,6), LexToken(ID,'x',1,9), LexToken(THEN,'then',1,11), LexToken(NUMBER,3,1,16), LexToken(RELOP,'LE',1,18), LexToken(NUMBER,4,1,21), LexToken(ELSE,'else',1,23), LexToken(NUMBER,20,1,28), LexToken(RELOP,'GE',1,31), LexToken(NUMBER,1,1,34)]
