@@ -21,7 +21,7 @@ def t_PROC(t):
     return t
 
 def t_MESSAGE(t):
-    r'(.*?)\n'
+    r'(.*?)+\n((\s)+(.*?)\n\n?)*'
     # Regular expression for MESSAGE
     t.value = t.value[:len(t.value) - 1]
     return t
