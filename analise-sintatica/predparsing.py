@@ -3,6 +3,8 @@
 # Univ. Fed. Fluminense
 
 import pprint
+
+import copy
 import pandas as pd
 from tabulate import tabulate
 
@@ -83,18 +85,35 @@ class Grammar:
             # "Add to FIRST(X_1 X_2 ... X_n) all non-epsilon symbols of
             # FIRST(X_1)."
 
-            ### Do your magic!
+            first_w.update(self.first_tab[x_1])
+            if('epsilon' in first_w):
+                first_w.discard('epsilon')
 
             # Also add the non-epsilon symbols of FIRST(X_2), if epsilon is in
             # FIRST(X_1), and so on until X_n.
 
-            ### Do your magic!
-            
+            for i in range(1, len(w)):
+                x_ant = w[i-1]
+                x_i = w[i]
+
+                if('epsilon' in self.first_tab[x_ant]):
+                    first_w.update(self.first_tab[x_i])
+                    if ('epsilon' in first_w):
+                        first_w.discard('epsilon')
+                else:
+                    break
+
             # Finally, add epsilon to FIRST(X_1 X_2 ... X_n) if for all i
             # epsilon \in FIRST(X_i).
 
-            ### Do your magic!
-            
+            add_epsilon = True
+            for x_i in w:
+                if(not 'epsilon' in self.first_tab[x_i]):
+                    add_epsilon = False
+                    break
+            if add_epsilon:
+                first_w.add('epsilon')
+
             return first_w
         else:
             return set()
@@ -121,7 +140,7 @@ class Grammar:
                 # use it.
                 if self.first_tab[y_1] == set():
                     self.first(y_1)
-                # FIRST(y_1) \subseteq FIRST(s)    
+                # FIRST(y_1) \subseteq FIRST(s)
                 for a in self.first_tab[y_1]:
                     self.first_log(s, a, rhs)                    
                     self.first_tab[s].add(a)
@@ -139,9 +158,12 @@ class Grammar:
                     # epsilon \in FISRT(y_j), for every 1 <= j <= i.
                     # However, we only reach j if every k 1 <= k < j
                     # has been reached before.
-
-                    ### Do your magic!
-
+                    if('epsilon' in self.first_tab[y_ant]):
+                        if self.first_tab[y_i] == set():
+                            self.first(y_i)
+                        for value in self.first_tab[y_i]:
+                            self.first_log(s, value, rhs)
+                            self.first_tab[s].add(value)
                     
             # If all symbols in the rhs derive epsilon, than epsilon
             # must be included in FIRST(s).
@@ -204,10 +226,14 @@ class Grammar:
         # apply the following rules until nothing can be
         # added to any FOLLOW set.
         while True:
-            ### Do your magic!
-            pass
+            pre = str(self.follow_tab)
+            for symbol in self.non_terminals:
+                self.follow(symbol)
+            pos = str(self.follow_tab)
+            if pre == pos:
+                break
 
-            
+
     def follow(self, s):
         '''
         Computes the FOLLOW of a given non terminal symbol.
@@ -218,23 +244,31 @@ class Grammar:
                 B = rhs[i]
                 if B in self.non_terminals:
                     beta = rhs[(i + 1):]
+                    #print('s: '+s)
+                    #print('B: ' + B)
+                    #print('beta: ' + str(beta))
+                    #A = s, B = B, beta = beta
                     if beta != ():
                         # If there is a production A -> alpha􏰐B beta then everything in
                         # FIRST(beta),􏰚except epsilon, is in FOLLOW(B).
-                        
-                        ### Do your magic!
+
+                        self.follow_tab[B].update(self.firstW(beta))
+                        self.follow_tab[B].discard('epsilon')
 
                         # If there is a production A -> alpha B beta
                         # where FIRST(beta) contains epsilon, then FOLLOW(A) \subset FOLLOW(B) 􏰛􏰂
 
-                        ### Do your magic! 
-                        pass
+                        if('epsilon' in self.firstW(beta)):
+                            if self.follow_tab[s] == set():
+                                self.follow(s)
+                            self.follow_tab[B].update(self.follow_tab[s])
                     else:
                         # If there is a production A -> alpha B
                         # then FOLLOW(A) \subset FOLLOW(B) 􏰛􏰂
+                        if self.follow_tab[s] == set():
+                            self.follow(s)
+                        self.follow_tab[B].update(self.follow_tab[s])
 
-                        ### Do your magic!
-                        pass
     def compute_pred_parsing_tab(self):
         '''
         Computes the predictive parsing table of a given grammar.
@@ -249,13 +283,14 @@ class Grammar:
                 if alpha == ("epsilon",) or \
                    (alpha != ("epsilon",) and ("epsilon" in self.firstW(alpha))):
 
-                    ### Do your magic!
-
+                    for b in self.follow_tab[A]:
+                        self.pred_parsing_tab[A][b].append(A + " -> " + "".join(alpha))
                 else:
                     # For each terminal a in FIRST(alpha), 
                     # add A -> alpha to M[A, a]
 
-                    ### Do your magic!
+                    for a in self.firstW(alpha):
+                        self.pred_parsing_tab[A][a].append(A + " -> " + "".join(alpha))
                     
     def print_pred_parsing_tab(self):
         # self.pp.pprint(self.pred_parsing_tab)
@@ -299,7 +334,6 @@ if __name__ == '__main__':
 
     ex = Exercise("Example 4.30 of the Dragon book, 2nd.", g)
     ex.solve()
-    
     # Production rules for Example 4.33
     p = {"S" : [("i", "E", "t", "S", "S'"), ("a", )],
          "S'" : [("e", "S"), ("epsilon",)],
@@ -309,4 +343,3 @@ if __name__ == '__main__':
 
     ex = Exercise("Example 4.33 of the Dragon book, 2nd.", g)
     ex.solve()
-    
