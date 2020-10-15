@@ -50,6 +50,7 @@ class Grammar:
         self.pred_parsing_trace = []
         self.pp = pprint.PrettyPrinter()
         self.first_computed = False
+        self.follow_computed = False
     
     def getSymbols(self):
         symbols = self.non_terminals.copy()
@@ -138,6 +139,7 @@ class Grammar:
                     break
                 # We must first calculate FIRST(y_1) before
                 # use it.
+                if y_1 == s: continue
                 if self.first_tab[y_1] == set():
                     self.first(y_1)
                 # FIRST(y_1) \subseteq FIRST(s)
@@ -232,6 +234,7 @@ class Grammar:
             pos = str(self.follow_tab)
             if pre == pos:
                 break
+        self.follow_computed = True
 
 
     def follow(self, s):
@@ -259,14 +262,14 @@ class Grammar:
                         # where FIRST(beta) contains epsilon, then FOLLOW(A) \subset FOLLOW(B) 􏰛􏰂
 
                         if('epsilon' in self.firstW(beta)):
-                            if self.follow_tab[s] == set():
-                                self.follow(s)
+                            #if self.follow_tab[s] == set():
+                            #    self.follow(s)
                             self.follow_tab[B].update(self.follow_tab[s])
                     else:
                         # If there is a production A -> alpha B
                         # then FOLLOW(A) \subset FOLLOW(B) 􏰛􏰂
-                        if self.follow_tab[s] == set():
-                            self.follow(s)
+                        #if self.follow_tab[s] == set():
+                        #    self.follow(s)
                         self.follow_tab[B].update(self.follow_tab[s])
 
     def compute_pred_parsing_tab(self):
