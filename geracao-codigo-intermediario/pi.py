@@ -14,7 +14,7 @@ class IllFormed(Exception):
 class Statement:
     def __init__(self, *args):
         self.__opr = list(args)
-        
+
     def __str__(self):
         if COLORED:
             ret = colored(str(self.__class__.__name__), None, attrs = ['bold']) + "("
@@ -37,7 +37,7 @@ class Statement:
 
     def operands(self):
         return self.__opr
-    
+
     def operand(self, n):
         if self.arity() > 0:
             return self.__opr[n]
@@ -120,7 +120,7 @@ class PiAutomaton(dict):
 #
 # Expressions
 #
-    
+
 class Exp(Statement):
 
     def left_operand(self):
@@ -137,6 +137,54 @@ class Exp(Statement):
         else:
             raise IllFormed("Call to 'right_operand' on " +
                             str(self) + ": " + "Operator is not binary.")
+
+### Array implementation ###
+
+class IntegerArray(Statement):
+    def __init__(self, arr):
+        if isinstance(arr, list):
+            Statement.__init__(self, arr)
+        else:
+            raise IllFormed(self, arr)
+
+class ArrayProjection(Exp):
+    def __init__(self, idn, e):
+        if isinstance(idn, Id):
+            if isinstance(e, Exp):
+                Exp.__init__(self, idn, e)
+            else:
+                raise IllFormed(self, e)
+        else:
+            raise IllFormed(self, idn)
+
+class ArrayConcat(Exp):
+    def __init__(self, arr, e):
+        if isinstance(arr, Exp) or isinstance(arr, IntegerArray):
+            if isinstance(e, Exp):
+                Exp.__init__(self, arr, e)
+            else:
+                raise IllFormed(self, e)
+        else:
+            raise IllFormed(self, arr)
+
+class ArrayAppend(Exp):
+    def __init__(self, arr1, arr2):
+        if isinstance(arr1, Exp) or isinstance(arr1, IntegerArray):
+            if isinstance(arr2, Exp) or isinstance(arr2, IntegerArray):
+                Exp.__init__(self, arr1, arr2)
+            else:
+                raise IllFormed(self, arr2)
+        else:
+            raise IllFormed(self, arr2)
+
+class ArrayLength(Exp):
+    def __init__(self, e):
+        if isinstance(e, Id) or isinstance(e, IntegerArray):
+            Exp.__init__(self, e)
+        else:
+            raise IllFormed(self, e)
+
+### Array implementation ###
 
 
 class ArithExp(Exp):
@@ -156,7 +204,7 @@ class Num(ArithExp):
             ret = str(self.num())
         return ret
 
-        
+
     def num(self):
         return self.operand(0)
 
@@ -317,6 +365,13 @@ class ExpKW():
     AND = "#AND"
     OR = "#OR"
     NOT = "#NOT"
+    ### Array Implementation ###
+    IDX = "#IDX"
+    CONCAT = "#CONCAT"
+    APPEND = "#APPEND"
+    LENGTH = "#LENGTH"
+    ARRAYASSIGN = "#ARRAYASSIGN"
+    ### Array Implementation ###
 
 class ExpPiAut(PiAutomaton):
 
@@ -534,6 +589,87 @@ class ExpPiAut(PiAutomaton):
         v = self.popVal()
         self.pushVal(not v)
 
+### Array Implementation ###
+    def __evalIntegerArray(self, e):
+        arr = e.operand(0)
+        self.pushVal(arr)
+
+    def __evalArrayProjection(self, e):
+        idn = e.operand(0)
+        idx = e.operand(1)
+        self.pushCnt(ExpKW.IDX)
+        self.pushCnt(idn)
+        self.pushCnt(idx)
+
+    def __evalArrayProjectionKW(self):
+        arr = self.popVal()
+        idx = self.popVal()
+        self.pushVal(arr[idx])
+
+    def __evalArrayConcat(self, e):
+        arr = e.operand(0)
+        v = e.operand(1)
+        self.pushCnt(ExpKW.CONCAT)
+        self.pushCnt(arr)
+        self.pushCnt(v)
+
+    def __evalArrayConcatKW(self):
+        arr = self.popVal()
+        e = self.popVal()
+        nArr = arr.copy()
+        nArr.append(Num(e))
+        self.pushVal(nArr)
+
+    def __evalArrayAppend(self, e):
+        arr1 = e.operand(0)
+        arr2  = e.operand(1)
+        self.pushCnt(ExpKW.APPEND)
+        self.pushCnt(arr1)
+        self.pushCnt(arr2)
+
+    def __evalArrayAppendKW(self):
+        arr1 = self.popVal()
+        arr2 = self.popVal()
+        self.pushVal(arr1 + arr2)
+
+    def __evalArrayLength(self, e):
+        arr = e.operand(0)
+        self.pushCnt(ExpKW.LENGTH)
+        self.pushCnt(arr)
+
+    def __evalArrayLengthKW(self):
+        arr = self.popVal()
+        self.pushVal(len(arr))
+
+    def __evalArrayAssign(self, c):
+        idn = c.operand(0)
+        idx = c.operand(1)
+        e = c.operand(2)
+        self.pushVal(idn.id())
+        self.pushVal(idx)
+        self.pushCnt(ExpKW.ARRAYASSIGN)
+        self.pushCnt(e)
+
+    def __evalArrayAssignKW(self):
+        val = self.popVal()
+        idx = self.popVal()
+        idn = self.popVal()
+        arr = self.getBindable(idn)
+        s = self.sto()
+        if isinstance(idx, Id):
+            aux = self.getBindable(idx.id())
+            idx = s[aux]
+        nArr = s[arr]
+        if (not isinstance(val, Num)):
+            val = Num(val)
+        if(isinstance(idx, int)):
+            nArr[idx] = val
+        else:
+            nArr[idx.num()] = val
+        self.updateStore(arr, nArr)
+
+
+### Array Implementation ###
 
     def eval(self):
         e = self.popCnt()
@@ -589,6 +725,30 @@ class ExpPiAut(PiAutomaton):
             self.__evalNot(e)
         elif e == ExpKW.NOT:
             self.__evalNotKW()
+        ### Array Implementation ###
+        elif isinstance(e, IntegerArray):
+            self.__evalIntegerArray(e)
+        elif isinstance(e, ArrayProjection):
+            self.__evalArrayProjection(e)
+        elif e == ExpKW.IDX:
+            self.__evalArrayProjectionKW()
+        elif isinstance(e, ArrayConcat):
+            self.__evalArrayConcat(e)
+        elif e == ExpKW.CONCAT:
+            self.__evalArrayConcatKW()
+        elif isinstance(e, ArrayAppend):
+            self.__evalArrayAppend(e)
+        elif e == ExpKW.APPEND:
+            self.__evalArrayAppendKW()
+        elif isinstance(e, ArrayLength):
+            self.__evalArrayLength(e)
+        elif e == ExpKW.LENGTH:
+            self.__evalArrayLengthKW()
+        elif isinstance(e, ArrayAssign):
+            self.__evalArrayAssign(e)
+        elif e == ExpKW.ARRAYASSIGN:
+            self.__evalArrayAssignKW()
+        ### Array Implementation ###
         else:
             raise EvaluationError( \
                 "Don't know how to evaluate " + str(e) + " of type " + str(type(e)) + "." + \
@@ -597,7 +757,7 @@ class ExpPiAut(PiAutomaton):
 #
 # Commands
 #
-        
+
 class Cmd(Statement):
     pass
 
@@ -618,7 +778,7 @@ class Id(ArithExp, BoolExp):
 class Print(Cmd):
 
     def __init__(self, e):
-        if isinstance(e, Exp):
+        if isinstance(e, Exp) or isinstance(e, IntegerArray):
             Cmd.__init__(self, e)
         else:
             raise IllFormed(self, e)
@@ -645,6 +805,21 @@ class Assign(Cmd):
     def rvalue(self):
         return self.operand(1)
 
+### Array Implementation ###
+class ArrayAssign(Cmd):
+    def __init__(self, idn, idx, e):
+        if isinstance(idn, Id):
+            if isinstance(idx, Exp):
+                if isinstance(e, Exp):
+                    Cmd.__init__(self, idn, idx, e)
+                else:
+                    raise IllFormed(self, e)
+            else:
+                raise IllFormed(self, idx)
+        else:
+            raise IllFormed(self, idn)
+
+### Array Implementation ###
 
 class Loop(Cmd):
     def __init__(self, be, c):
@@ -666,7 +841,7 @@ class Cond(Cmd):
     def __init__(self, be, c1, c2):
         if isinstance(be, BoolExp):
             if isinstance(c1, Cmd):
-                if isinstance(c2, Cmd):                
+                if isinstance(c2, Cmd):
                     Cmd.__init__(self, be, c1, c2)
                 else:
                     raise IllFormed(self, c2)
@@ -716,7 +891,7 @@ class CmdKW:
     ASSIGN = "#ASSIGN"
     LOOP   = "#LOOP"
     COND   = "#COND"
-    PRINT  = "#PRINT" 
+    PRINT  = "#PRINT"
 
 class CmdPiAut(ExpPiAut):
 
@@ -765,7 +940,7 @@ class CmdPiAut(ExpPiAut):
 
     def __emmit(self, e):
         self["out"].append(e)
-        
+
     def __evalPrint(self, c):
         e = c.exp()
         self.pushCnt(CmdKW.PRINT)
@@ -774,7 +949,7 @@ class CmdPiAut(ExpPiAut):
     def __evalPrintKW(self):
         v = self.popVal()
         self.__emmit(v)
-        
+
     def __evalAssign(self, c):
         i = c.lvalue()
         e = c.rvalue()
@@ -782,13 +957,11 @@ class CmdPiAut(ExpPiAut):
         self.pushCnt(CmdKW.ASSIGN)
         self.pushCnt(e)
 
-
     def __evalAssignKW(self):
         v = self.popVal()
         i = self.popVal()
         l = self.getBindable(i)
         self.updateStore(l, v)
-
 
     def __evalId(self, i):
         s = self.sto()
@@ -810,8 +983,8 @@ class CmdPiAut(ExpPiAut):
         if t:
             self.pushCnt(c.then_branch())
         else:
-            self.pushCnt(c.else_branch())            
-        
+            self.pushCnt(c.else_branch())
+
     def __evalLoop(self, c):
         be = c.cond()
         bl = c.body()
@@ -871,7 +1044,7 @@ class CmdPiAut(ExpPiAut):
 #
 # Declarations
 #
-            
+
 class Dec(Statement):
     pass
 
@@ -885,7 +1058,7 @@ class Bind(Dec):
                 i = args[0]
                 e = args[1]
                 if isinstance(i, Id):
-                    if isinstance(e, Exp):
+                    if isinstance(e, Exp) or isinstance(e, IntegerArray):
                         Dec.__init__(self, i, e)
                     else:
                         raise IllFormed(self, e)
@@ -903,7 +1076,7 @@ class Bind(Dec):
 
 class Ref(Exp):
     def __init__(self, e):
-        if isinstance(e, Exp):
+        if isinstance(e, Exp) or isinstance(e, IntegerArray):
             Exp.__init__(self, e)
         else:
             raise IllFormed(self, e)
@@ -935,11 +1108,11 @@ class Blk(Cmd):
                     Cmd.__init__(self, d, c)
                 else:
                     raise IllFormed(self, c)
-            else: 
+            else:
                raise IllFormed(self, d)
         # Blocks with no declarations
         elif len(args) == 1:
-            c = args[0] 
+            c = args[0]
             if isinstance(c, Cmd):
                 Cmd.__init__(self, c)
             else:
@@ -948,7 +1121,7 @@ class Blk(Cmd):
     def dec(self):
         if self.arity() == 1:
             return None
-        elif self.arity() == 2:    
+        elif self.arity() == 2:
             return self.operand(0)
         else:
             raise IllFormed(self)
@@ -956,7 +1129,7 @@ class Blk(Cmd):
     def cmd(self):
         if self.arity() == 1:
             return self.operand(0)
-        elif self.arity() == 2:    
+        elif self.arity() == 2:
             return self.operand(1)
         else:
             raise IllFormed(self)
@@ -1054,7 +1227,7 @@ class DecPiAut(CmdPiAut):
             # If the block has no declarations
             # we need to save the environment because the
             # evaluation of BLOCKCMD restores it.
-            # There could be an opcode to capture this 
+            # There could be an opcode to capture this
             # semantics such that saving and restoring an unchanged
             # environment does not happen, as it is now.
             self.pushVal(self.env())
@@ -1085,7 +1258,7 @@ class DecPiAut(CmdPiAut):
         self["sto"] = s
         # Retrieves the locations prior to the start of the execution of the block.
         ls = self.popVal()
-        self["locs"] = ls            
+        self["locs"] = ls
 
     def eval(self):
         d = self.popCnt()
@@ -1110,14 +1283,14 @@ class DecPiAut(CmdPiAut):
         else:
             self.pushCnt(d)
             super().eval()
- 
-#            
+
+#
 # Abstractions
 #
 
 class Formals(list):
     def __init__(self, f):
-        if isinstance(f, list): 
+        if isinstance(f, list):
             for a in f:
                 if not isinstance(a, Id):
                     raise IllFormed(self, a)
@@ -1223,7 +1396,7 @@ class Closure(dict):
 
 class CallKW(CmdKW):
     CALL = "#CALL"
-    
+
 class AbsPiAut(DecPiAut):
     def __evalAbs(self, a):
         if not isinstance(a, Abs):  # p must be an abstraction
@@ -1242,7 +1415,7 @@ class AbsPiAut(DecPiAut):
 
     def match(self, f, a):
         return self.__match(f, a)
-        
+
     def __match(self, f, a):
         '''
         Given a list of formal parameters and a list of actual parameters,
@@ -1317,7 +1490,7 @@ class AbsPiAut(DecPiAut):
         # Retrieves the current environment.
         # e = self.env().copy()
         # Retrives the closure's environment.
-        ce = clos.env()      
+        ce = clos.env()
         # The caller's block must run on the closure's environment
         # overwritten with the matches.
         # e.update(ce)
@@ -1343,7 +1516,7 @@ class AbsPiAut(DecPiAut):
             self.pushCnt(d)
             super().eval()
 
-#            
+#
 # Recursive abstractions
 #
 
@@ -1371,10 +1544,10 @@ class Rec(Closure):
             self['recenv'] = e2
         else:
             raise EvaluationError(self, e)
-        
+
     def recenv(self):
         return self['recenv']
-        
+
 def unfold(e):
     return reclose(e, e)
     # if isinstance(e, Env):
@@ -1448,9 +1621,9 @@ class RecPiAut(AbsPiAut):
         # Retrieves the current environment.
         # e = self.env()
         # Retrives the recursive closure's environment.
-        rce = reclos.env()      
+        rce = reclos.env()
         # Retrives the recursive closure's recursive environment.
-        rcre = reclos.recenv()      
+        rcre = reclos.recenv()
         # The caller's block must run on the current environment
         # overwritten with the recursive (unfolded) environments and matches.
         # Is it the current env. or the reclosure's?
@@ -1471,7 +1644,7 @@ class RecPiAut(AbsPiAut):
     def __evalRecKW(self):
         b = self.popVal()
         self.pushVal(unfold(b))
-        
+
     def eval(self):
         c = self.popCnt()
         if isinstance(c, BindRecAbs):

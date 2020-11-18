@@ -26,13 +26,13 @@
 
 start = [ds:decSeq] [cs:cmd_seq] $ ;
 
-exp = paren_exp | bin_exp | un_exp | @:atom ;
+exp = integer_array | array_projection | array_append | paren_exp | bin_exp | un_exp | @:atom ;
 
 paren_exp = "(" e:exp ")" ;
 
 bin_exp = e1:exp op:binop e2:exp ;
 
-un_exp = op:"not" e:exp ;
+un_exp = op:"\#" e:exp | op:"not" e:exp ;
 
 atom = @:num_atom  | @:truth_atom | @:id_atom ;
 
@@ -42,7 +42,7 @@ truth_atom = truth ;
 
 id_atom = identifier ;
 
-binop = "and"| "or" | "==" | "<=" | ">=" | "<" | ">"  | "+" | "-" | "*" | "/"  ; 
+binop = "\+" | "and"| "or" | "==" | "<=" | ">=" | "<" | ">"  | "+" | "-" | "*" | "/"  ;
 
 truth = 'True' | 'False' ;
 
@@ -56,7 +56,7 @@ blk = "{" ds:decSeq cs:cmd_seq "}" ;
 
 cmd_seq = ";"%{ac:atom_cmd}+ ;
 
-atom_cmd = cond | loop | assign | print | call | skip ;
+atom_cmd = cond | loop | assign | array_assign | print | call | skip ;
 
 skip = "skip" ;
 
@@ -86,5 +86,14 @@ call = idn:identifier '(' a:actual ')' ;
 
 actual = ','%{ exp }* ;
 
+### Array Implementation ###
 
+integer_array = '[' e:exp {','e:exp}* ']' ;
 
+array_projection = idn:identifier '[' e:exp ']' ;
+
+array_append = a1:exp '++' a2:exp | a1:integer_array '++' a2:integer_array | a1:exp '++' a2:integer_array | a1:integer_array '++' a2:exp ;
+
+array_assign = idn:identifier '[' idx:exp ']' op:':=' e:exp;
+
+### Array Implementation ###

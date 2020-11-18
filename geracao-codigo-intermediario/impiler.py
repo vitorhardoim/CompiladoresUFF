@@ -7,7 +7,7 @@ from tatsu import ast
 class Impiler(object):
     def paren_exp(self, ast):
         return ast.e
-    
+
     def identifier(self, ast):
         return pi.Id(str(ast))
 
@@ -17,31 +17,55 @@ class Impiler(object):
     def un_exp(self, ast):
         if ast.op == "not":
             return pi.Not(ast.e)
-        
+        ### Array Implementation ###
+        if ast.op == "\#":
+            return pi.ArrayLength(ast.e)
+        ### Array Implementation ###
+
+    ### Array Implementation ###
+    def integer_array(self, ast):
+        if isinstance(ast.e, list):
+            return pi.IntegerArray(ast.e)
+        return pi.IntegerArray([ast.e])
+
+    def array_projection(self, ast):
+        return pi.ArrayProjection(ast.idn, ast.e)
+
+    def array_append(self, ast):
+        return pi.ArrayAppend(ast.a1, ast.a2)
+
+    def array_assign(self, ast):
+        return pi.ArrayAssign(ast.idn, ast.idx, ast.e)
+    ### Array Implementation ###
+
     def bin_exp(self, ast):
         if ast.op == "+":
             return pi.Sum(ast.e1, ast.e2)
         elif ast.op == "-":
-            return pi.Sub(ast.e1, ast.e2)        
+            return pi.Sub(ast.e1, ast.e2)
         elif ast.op == "*":
-            return pi.Mul(ast.e1, ast.e2)        
+            return pi.Mul(ast.e1, ast.e2)
         elif ast.op == "/":
-            return pi.Div(ast.e1, ast.e2)        
+            return pi.Div(ast.e1, ast.e2)
         elif ast.op == "and":
-            return pi.And(ast.e1, ast.e2)        
+            return pi.And(ast.e1, ast.e2)
         elif ast.op == "or":
-            return pi.Or(ast.e1, ast.e2)        
+            return pi.Or(ast.e1, ast.e2)
         elif ast.op == "<":
-            return pi.Lt(ast.e1, ast.e2)        
+            return pi.Lt(ast.e1, ast.e2)
         elif ast.op == "<=":
-            return pi.Le(ast.e1, ast.e2)        
+            return pi.Le(ast.e1, ast.e2)
         elif ast.op == ">":
-            return pi.Gt(ast.e1, ast.e2)        
+            return pi.Gt(ast.e1, ast.e2)
         elif ast.op == ">=":
-            return pi.Ge(ast.e1, ast.e2)        
+            return pi.Ge(ast.e1, ast.e2)
         elif ast.op == "==":
-            return pi.Eq(ast.e1, ast.e2)        
-    
+            return pi.Eq(ast.e1, ast.e2)
+        ### Array Implementation ###
+        elif ast.op == "\+":
+            return pi.ArrayConcat(ast.e1, ast.e2)
+        ### Array Implementation ###
+
     def truth(self, ast):
         return pi.Boo(bool(ast))
 
@@ -50,9 +74,9 @@ class Impiler(object):
 
     def print(self, ast):
         return pi.Print(ast.e)
-    
+
     def const(self, ast):
-        return pi.Bind(ast.idn, ast.e) 
+        return pi.Bind(ast.idn, ast.e)
 
     def var(self, ast):
         if isinstance(ast.idn, list):
@@ -64,7 +88,7 @@ class Impiler(object):
             return pi.Bind(ast.idn, pi.Ref(ast.e))
 
     def skip(self, ast):
-        return pi.Nop() 
+        return pi.Nop()
 
     def decSeq(self, ast):
         if ast:
@@ -81,7 +105,7 @@ class Impiler(object):
             return pi.Blk(ds[0], self.__blk_aux(ds[1:], cs))
         else:
             return pi.Blk(ds[0], cs)
-            
+
     def __blk(self, ds, cs):
         if isinstance(ds, pi.Bind):
             return pi.Blk(ds, cs)
@@ -89,7 +113,7 @@ class Impiler(object):
             return self.__blk_aux(ds.operands(), cs)
         else:
             raise Exception("Block parse error: " + str(ds) + " "  + str(cs) + ".")
-            
+
     def blk(self, ast):
         if ast.ds:
             if ast.cs:
@@ -101,7 +125,7 @@ class Impiler(object):
                 return pi.Blk(ast.cs)
             else:
                 return pi.Blk(pi.Nop())
-        
+
     def start(self, ast):
         return self.blk(ast)
 
@@ -113,7 +137,7 @@ class Impiler(object):
             return cs
         else:
             return ast.ac
-        
+
     def let(self, ast):
         return pi.Blk(ast.ds, ast.c)
 
@@ -124,7 +148,7 @@ class Impiler(object):
         if ast.b2:
             return pi.Cond(ast.t, ast.b1, ast.b2)
         else:
-            return pi.Cond(ast.t, ast.b1, pi.Nop())        
+            return pi.Cond(ast.t, ast.b1, pi.Nop())
 
     def __makeAbs(self, f, c):
         assert(isinstance(f, list))
