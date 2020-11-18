@@ -1,0 +1,59 @@
+### Declarações Iniciais ###
+var array1 = [0,1,2,3,4];
+var array2 = [5,6,7,8,9];
+var idx = 3;
+### Variáveis para o BubbleSort ###
+var qtdElementos = 0;
+var j = 0;
+var temp1 = 0;
+var temp2 = 0;
+var prox = 0;
+var arrayDesordenado = [7,9,6,3,2];
+
+### Print Array Simples ###
+print(array1); # Saída: [0,1,2,3,4]
+
+print(array2); # Saída: [5,6,7,8,9]
+
+### Projeção ###
+print(array1[0]); # Saída: [0]
+
+print(array1[4]); # Saída: [4]
+
+print(array2[idx]); # Saída: [8]
+
+print(array2[idx + 1]); # Saída: [9]
+
+### Concatenação ###
+array2 := array2 \+ 10;
+print(array2); # Saída: [5,6,7,8,9,10]
+
+print(array2[5]); # Saída: [10]
+
+### Append ###
+array2:= array2 ++ array1;
+print(array2); # Saída: [5,6,7,8,9,10,0,1,2,3,4]
+
+### Length ###
+print(\#array2); # Saída: 11
+
+### Bubble Sort ###
+qtdElementos := \#arrayDesordenado;
+qtdElementos := qtdElementos - 1;
+print(qtdElementos); # Saída: 4
+
+while(qtdElementos > 0){
+    while(j < qtdElementos){
+        prox := j + 1;
+        temp1 := arrayDesordenado[j];
+        temp2 := arrayDesordenado[prox];
+        if (temp1 > temp2){
+            arrayDesordenado[j] := temp2;
+            arrayDesordenado[prox] := temp1
+        };
+        j := j + 1
+    };
+    j := 0;
+    qtdElementos := qtdElementos - 1
+};
+print(arrayDesordenado) # Saída: [2,3,6,7,9], entrou como [7,9,6,3,2].
