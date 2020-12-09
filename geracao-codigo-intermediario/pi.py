@@ -790,7 +790,7 @@ class Assign(Cmd):
 
     def __init__(self, i, e):
         if isinstance(i, Id):
-            if isinstance(e, Exp):
+            if isinstance(e, Exp) or isinstance(e, Call):
                 Cmd.__init__(self, i, e)
             else:
                 raise IllFormed(self, e)
@@ -875,6 +875,16 @@ class CSeq(Cmd):
     def right_cmd(self):
         return self.operand(1)
 
+### Return Implementation ###
+class Return(Cmd):
+    def __init__(self, e):
+        if(isinstance(e, Exp)):
+            Cmd.__init__(self, e)
+        else:
+            raise IllFormed(self, e)
+### Return Implementation ###
+
+
 class Env(dict):
     pass
 
@@ -892,6 +902,7 @@ class CmdKW:
     LOOP   = "#LOOP"
     COND   = "#COND"
     PRINT  = "#PRINT"
+    RETURN = "#RETURN"
 
 class CmdPiAut(ExpPiAut):
 
@@ -1012,6 +1023,29 @@ class CmdPiAut(ExpPiAut):
         self.pushCnt(c2)
         self.pushCnt(c1)
 
+### Return implementation ###
+    def __evalReturn(self, e):
+        v = e.operand(0)
+        self.pushCnt(CmdKW.RETURN)
+        self.pushCnt(v)
+
+    def __evalReturnKW(self):
+        v = self.popVal()
+        tmp = self.popVal()
+        while isinstance(tmp, dict) or isinstance(tmp, list):
+            tmp = self.popVal()
+        env = self.popVal()
+        self['val'] = [[],[],[]]
+        self.pushVal(env)
+        self.pushVal(tmp)
+        self.pushVal(v)
+
+        cnt = self.popCnt()
+        while cnt == "#BLKCMD":
+            cnt = self.popCnt()
+
+        self.pushCnt(cnt)
+### Return implementation ###
 
     def eval(self):
         c = self.popCnt()
@@ -1037,6 +1071,12 @@ class CmdPiAut(ExpPiAut):
             self.__evalLoopKW()
         elif isinstance(c, CSeq):
             self.__evalCSeq(c)
+        ### Return implementation ###
+        elif isinstance(c, Return):
+            self.__evalReturn(c)
+        elif c == CmdKW.RETURN:
+            self.__evalReturnKW()
+        ### Return implementation ###
         else:
             self.pushCnt(c)
             super().eval()

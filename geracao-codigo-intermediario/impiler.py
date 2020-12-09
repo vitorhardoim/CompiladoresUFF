@@ -175,3 +175,6 @@ class Impiler(object):
     def call(self, ast):
         actuals = [e for e in ast.a if e != ',']
         return pi.Call(ast.idn, actuals)
+
+    def cmd_return(self, ast):
+        return pi.Return(ast.e)
