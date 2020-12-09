@@ -1,0 +1,14 @@
+var fatorial = 0;
+
+def func_fat (num) {
+    var cont = 1;
+    var resultado = 1;
+    while(cont < num){
+        cont := cont + 1;
+        resultado := resultado * cont
+    } ;
+    return resultado
+}
+
+fatorial := func_fat(20) ;
+print(fatorial) #Output = [24]

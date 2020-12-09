@@ -1,0 +1,10 @@
+var resultado = 0 ;
+
+def func_square (num) {
+    var square = 0 ;
+    square := num * num ;
+    return square
+}
+
+resultado := func_square(10) ;
+print(resultado) #Output = [100]
